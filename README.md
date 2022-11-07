@@ -10,7 +10,7 @@ Inspired by Matt Parker's video https://www.youtube.com/watch?v=_-AfhLQfb6w wher
 ## Runtime
 It can take anywhere from 5 to 30 minutes to run depending on your system
 
-## Sameple Output
+## Sample Output
 ```
 Total words: 14855
 Valid words: 9365
