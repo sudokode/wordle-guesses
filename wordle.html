@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <title>Five Letter Words</title>
+    </head>
+    <body>
+    </body>
+    <script>
+        (async () => {
+            const startTime = performance.now();
+
+            Array.prototype.unique = function() {
+                return this.filter((value, index, self) => self.indexOf(value) === index);
+            };
+
+            const alphabet = "abcdefghijklmnopqrstuvwxyz";
+
+            const getLetterScore = letter => 1 << alphabet.indexOf(letter);
+
+            const getWordScore = word => word.split("").reduce((score, letter) => score | getLetterScore(letter), 0);
+
+            // Freely available list of 14,855 possible Wordle guesses
+            const wordScores = await fetch(
+                "https://raw.githubusercontent.com/tabatkins/wordle-list/main/words"
+            ).then(
+                response => response.text()
+            ).then(
+                text => text.trim().split("\n")
+            ).then(words => {
+                let scores = {};
+
+                words.forEach(word => {
+                    scores[word] = getWordScore(word);
+                });
+
+                return scores;
+            });
+
+            console.log("Total words:", Object.keys(wordScores).length);
+
+            let uniqueCache = {};
+
+            const getCheckString = score => {
+                if (uniqueCache[score] === undefined)
+                    uniqueCache[score] = score.toString(2).replace(/0/g, "");
+                
+                return uniqueCache[score];
+            };
+
+            const isValid = (score, wordCount = 2) => getCheckString(score).length / 5 === wordCount;
+
+            const validWords = Object.keys(wordScores).filter(
+                word => isValid(wordScores[word], 1)
+            );
+
+            console.log("Valid words:", validWords.length);
+
+            let comboCache = {};
+
+            const getValidCombos = (score, wordCount = 1, words = validWords) => {
+                if (comboCache[score] === undefined)
+                    comboCache[score] = [];
+
+                if (comboCache[score][wordCount] === undefined)
+                    comboCache[score][wordCount] = words.filter(
+                        word => isValid(score ^ wordScores[word], wordCount + 1)
+                    );
+
+                return comboCache[score][wordCount];
+            };
+
+            let results = [];
+
+            const processWord = word => {
+                const score = wordScores[word];
+
+                return getValidCombos(score).flatMap((pairWord, index, pairs) => {
+                    const pairScore = score ^ wordScores[pairWord];
+
+                    return getValidCombos(pairScore, 2, pairs).flatMap((tripWord, index, trips) => {
+                        const tripScore = pairScore ^ wordScores[tripWord];
+
+                        return getValidCombos(tripScore, 3, trips).flatMap((quadWord, index, quads) => {
+                            const quadScore = tripScore ^ wordScores[quadWord];
+
+                            return getValidCombos(quadScore, 4, quads).unique().map(finalWord => {
+                                result = [word, pairWord, tripWord, quadWord, finalWord].sort().join(", ");
+
+                                if (results.indexOf(result) > -1)
+                                    return;
+
+                                results.push(result);
+                                return result;
+                            });
+                        });
+                    });
+                }).filter(result => result);
+            };
+
+            validWords.forEach(word => processWord(word));
+
+            console.log("Results:", results);
+            console.log("Runtime:", (performance.now() - startTime) / 1000, "seconds");
+        })();
+    </script>
+</html>
